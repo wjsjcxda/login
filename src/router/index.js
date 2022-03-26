@@ -3,45 +3,33 @@ import Vue from 'vue'
 //引入路由
 import Router from 'vue-router'
 // 引入路由组件
-import MSite from '../pages/MSite/MSite.vue' 
-import Search from '../pages/Search/Search.vue' 
-import Order from '../pages/Order/Order.vue' 
-import Profile from '../pages/Profile/Profile.vue' 
-import Login from '../pages/Login/Login.vue' 
+// import Profile from '../pages/Profile/Profile.vue'
+
+// 路由懒加载
+const Profile = () => import('../pages/Profile/Profile.vue')
+
+import Login from '../pages/Login/Login.vue'
+import Manger from '../pages/Manger/Manger.vue'
 
 
 
 Vue.use(Router)
 
 export default new Router({
-	routes:[
-		{
-			path:'/msite',
-			component:MSite,
-			meta:{showFooter:true}
-		},
-		{
-			path:'/search',
-			component:Search,
-			meta:{showFooter:true}
-		},
-		{
-			path:'/order',
-			component:Order,
-			meta:{showFooter:true}
-		},
-		{
-			path:'/profile',
-			component:Profile,
-			meta:{showFooter:true}
-		},
-		{
-			path:'/login',
-			component:Login
-		},
-		{
-			path:'/',
-			redirect:'msite'
-		}
-	]
-})
+			routes: [{
+					path: '/login',
+					component: Login
+				},
+				{
+					path: '/profile',
+					component: Profile,
+				},
+				{
+					path: '/manger',
+					component: Manger
+				},
+				{
+					path: '/',
+					redirect: 'login'
+				}]
+			})
