@@ -8,6 +8,7 @@ const _filter = {
 	'__v': 0
 } // 查询时过滤掉
 const sms_util = require('../util/sms_util')
+const voice_util = require('../util/voice_util')
 const users = {}
 var svgCaptcha = require('svg-captcha')
 
@@ -39,7 +40,7 @@ router.post('/login_pwd', function(req, res) {
 			if (user.pwd !== pwd) {
 				res.send({
 					code: 1,
-					msg: '用户名或密码不正确!'
+					msg: '密码不正确!'
 				})
 			} else {
 				req.session.userid = user._id
@@ -80,10 +81,12 @@ router.post('/login_pwd', function(req, res) {
  */
 router.get('/captcha', function(req, res) {
 	var captcha = svgCaptcha.create({
+		size:4,
 		ignoreChars: '0o1l',
-		noise: 2,
+		noise: 5,
 		color: true
 	});
+	// {data: '<svg.../svg>', text: 'abcd'}
 	req.session.captcha = captcha.text.toLowerCase();
 	console.log(req.session.captcha)
 	/*res.type('svg');
@@ -121,6 +124,34 @@ router.get('/sendcode', function(req, res, next) {
 })
 
 /*
+发送语音验证码
+*/
+router.get('/voicecode', function(req, res, next) {
+	//1. 获取请求参数数据
+	var phone = req.query.phone;
+	//2. 处理数据
+	//生成验证码(6位随机数)
+	var code = voice_util.randomCode(6);
+	//发送给指定的手机号
+	console.log(`向${phone}发送语音验证码: ${code}`);
+	voice_util.voiceCode(phone, code, function(success) { //success表示是否成功
+		if (success) {
+			users[phone] = code
+			console.log('保存验证码: ', phone, code,users[phone])
+			res.send({
+				"code": 0
+			})
+		} else {
+			//3. 返回响应数据
+			res.send({
+				"code": 1,
+				msg: '语音验证码发送失败'
+			})
+		}
+	})
+})
+
+/*
 短信登陆
 */
 router.post('/login_sms', function(req, res, next) {
@@ -130,13 +161,12 @@ router.post('/login_sms', function(req, res, next) {
 	if (users[phone] != code) {
 		res.send({
 			code: 1,
-			msg: '手机号或验证码不正确'
+			msg: '验证码错误！！！'
 		});
 		return;
 	}
 	//删除保存的code
 	delete users[phone];
-
 
 	UserModel.findOne({
 		phone
@@ -162,6 +192,47 @@ router.post('/login_sms', function(req, res, next) {
 		}
 	})
 
+})
+/*
+语音登陆
+*/
+router.post('/login_voice', function(req, res, next) {
+	var phone = req.body.phone;
+	var code = req.body.code;
+	console.log('/login_voice', phone, code,users[phone]);
+	if (users[phone] != code) {
+		res.send({
+			code: 1,
+			msg: '验证码错误！！！'
+		});
+		return;
+	}
+	//删除保存的code
+	delete users[phone];
+
+	UserModel.findOne({
+		phone
+	}, function(err, user) {
+		if (user) {
+			req.session.userid = user._id
+			res.send({
+				code: 0,
+				data: user
+			})
+		} else {
+			//存储数据
+			const userModel = new UserModel({
+				phone
+			})
+			userModel.save(function(err, user) {
+				req.session.userid = user._id
+				res.send({
+					code: 0,
+					data: user
+				})
+			})
+		}
+	})
 })
 
 /*
@@ -197,22 +268,34 @@ router.get('/userinfo', function(req, res) {
 查询对应的users
  */
 router.get('/users', function(req, res) {
+	var name = req.query.searchName;
+	console.log('---',name)
 	// 查询
-	UserModel.find({}, function(err, user) {
-		// 如果没有, 返回错误提示
-		if (!user) {
-			res.send({
-				code: 1,
-				msg: '该用户不存在'
-			})
-		} else {
-			// 如果有, 返回user
-			res.send({
-				code: 0,
-				data: user
-			})
-		}
-	})
+	if(name){
+		UserModel.find({name}, function(err, user) {
+			// 如果没有, 返回错误提示
+			if (!user.length) {
+				res.send({
+					code: 1,
+					msg: '该用户不存在'
+				})
+			}else {
+				// 如果有, 返回user
+				res.send({
+					code: 0,
+					data: user
+				})
+			}
+		})	
+	}else{
+		UserModel.find({}, function(err, user) {
+				// 如果有, 返回user
+				res.send({
+					code: 0,
+					data: user
+				})
+		})	
+	}
 })
 
 // 修改密码

@@ -5,10 +5,11 @@
 				<span>欢迎登录用户管理界面</span>
 			</div>
 			<div id="search">
-				<mt-button @click="search()">查询</mt-button>
+				<input v-model="searchName" maxlength="6" class="box"/>
+				<mt-button @click="search">查询</mt-button>
 			</div>
 			<div id="add">
-				<mt-button @click="addUser()">增加</mt-button>
+				<mt-button @click="addUser">增加</mt-button>
 			</div>
 			<div id="top_links">
 				<div id="top_op">
@@ -110,6 +111,7 @@
 				myname: '',
 				yue: '',
 				day: '',
+				searchName:'',
 				head: false,
 				update: false,
 				ifAdd:false,
@@ -129,9 +131,16 @@
 			//查询
 			async search() {
 				let result
+				const {searchName} = this
 				this.head = true
-				result = await reqUser()
-				this.$store.dispatch('saveUsers', result.data)
+				result = await reqUser({searchName})
+				console.log('===',result.code)
+				if(result.code === 0){
+					this.$store.dispatch('saveUsers', result.data)
+				}else{
+					const msg = result.msg
+					this.showAlert(msg)
+				}
 			},
 			
 			addUser(){
@@ -145,10 +154,17 @@
 					addName,
 					addPwd
 				} = this
-				if(addName && addPwd){
-					result = await reqAdd({addName,addPwd})	
-				}else{
+				if(!addName && !addPwd){
 					this.showAlert("用户名或密码不能为空！！！")
+					return
+				}else if(addName && addPwd && !((/^[A-z]*$/).test(addName))){
+					this.showAlert('用户名只能含有字母')
+					return
+				}else if(addName && addPwd && (/^[A-z]*$/).test(addName) &&(addPwd.length < 6)){
+					this.showAlert('密码不能小于六位')
+					return
+				}else{
+					result = await reqAdd({addName,addPwd})
 				}
 				if(result.code===0){
 					const msg = result.msg
@@ -173,10 +189,14 @@
 					updateName,
 					NewPwd
 				} = this
-				reqUpdate({
-					updateName,
-					NewPwd
-				})
+				if(NewPwd.length < 6) {
+					this.showAlert('密码不能小于六位')
+				}else{
+					reqUpdate({
+						updateName,
+						NewPwd
+					})
+				}
 				this.search()
 			},
 
@@ -356,10 +376,15 @@
 		top: 15px;
 		color: transparent;
 	}
+	.box{
+		margin-left: 50px;
+		width: 60px;
+		height: 30px;
+	}
 
 	#add {
 		position: absolute;
-		left: 40%;
+		left: 44%;
 		top: 15px;
 		color: transparent;
 	}

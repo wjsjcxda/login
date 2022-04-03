@@ -15,7 +15,11 @@
 							<section class="login_message">
 								<input type="tel" maxlength="11" placeholder="手机号" v-model="phone">
 								<button :disabled="!rightPhone" class="get_verification" 
-										:class="{right_phone:rightPhone}" @click.prevent="getCode">{{computeTime ? `已发送(${computeTime}s)`: '获取验证码'}}</button>
+										:class="{right_phone:rightPhone}" @click.prevent="getCode" >{{computeTime ? '': '短信'}}
+								</button>
+								<button :disabled="!rightPhone" class="get_verification_voice" 
+										:class="{right_phone:rightPhone}" @click.prevent="getVoiceCode" >{{computeTime ? '' : '语音'}}</button>
+								<span v-if="computeTime" class="get_verification">已发送{{computeTime}}s</span>
 							</section>
 							<section class="login_verification">
 								<input type="tel" maxlength="8" placeholder="验证码" v-model="code">
@@ -53,7 +57,7 @@
 </template>
 
 <script>
-	import {reqPwdLogin,reqCode,reqPhoneLogin} from '../../api/index.js'
+	import {reqPwdLogin,reqCode,reqPhoneLogin,reqVoiceCode ,reqVoiceLogin} from '../../api/index.js'
 	import AlertTip from '../../components/AlertTip/AlertTip.vue'
 	export default {
 		name:'Login',
@@ -120,6 +124,7 @@
 		data(){
 			return {
 				loginWay:false, //true代表短信登录,false代表密码登录
+				phoneWay:false,//true代表语音登录,false代表短信登录
 				computeTime:0, //计时的时间
 				showPwd:false, //是否显示密码
 				phone:'', //手机号
@@ -140,8 +145,10 @@
 		methods:{
 			//异步获取短信验证码
 			async getCode(){
+				this.phoneWay = false
 				//如果当前没有计时
 				if(!this.computeTime){
+					let result
 					//启动倒计时
 					this.computeTime = 30
 					this.timer = setInterval(()=>{
@@ -167,6 +174,38 @@
 				}
 				
 			},
+			//异步获取语音验证码
+			async getVoiceCode(){
+				this.phoneWay = true
+				//如果当前没有计时
+				if(!this.computeTime){
+					let result
+					//启动倒计时
+					this.computeTime = 30
+					this.timer = setInterval(()=>{
+						this.computeTime--
+						if(this.computeTime<=0){
+							//停止计时
+							clearInterval(this.timer)
+						}
+					},1000)
+					
+					//发送ajax请求(向指定手机号发送验证码短信)
+					result = await reqVoiceCode(this.phone)
+					if(result.code===1){
+						//显示提示
+						this.showAlert(result.msg)
+						//停止倒计时
+						if(this.computeTime) {
+							this.computeTime = 0
+							clearInterval(this.timer)
+							this.timer = undefined
+						}
+					}
+				}
+				
+			},
+			
 			//展示警告框
 			showAlert(alertText){
 				this.alertShow = true
@@ -187,8 +226,13 @@
 						this.showAlert('验证码必须是六位数字')
 						return
 					}
-					//发送ajax请求短信登录
-					result = await reqPhoneLogin(phone,code)
+					if(!this.phoneWay){
+						//发送ajax请求短信登录
+						result = await reqPhoneLogin(phone,code)
+					}else{
+						//发送ajax请求语音登录
+						result = await reqVoiceLogin(phone,code)
+					}
 				}else {// 密码登录
 					const {name,pwd,captcha} = this
 					if(!this.name){
@@ -204,11 +248,11 @@
 						this.showAlert('验证码不能为空')
 						return
 					}else if(this.name != 'admin' && !((/^[A-z]*$/).test(this.name))){
-						//验证码不能为空
+						//用户名只能含有字母
 						this.showAlert('用户名只能含有字母')
 						return
 					}else if(this.name != 'admin' && (/^[A-z]*$/).test(this.name) &&(this.pwd.length < 6)){
-						//验证码不能为空
+						//密码不能小于六位
 						this.showAlert('密码不能小于六位')
 						return
 					}
@@ -226,14 +270,14 @@
 				//根据结果数据处理
 				if(result.code===0 && result.data.name === 'admin'){
 					const user = result.data
-					//将user保存到vuex的state中取		
+					//将user保存到vuex的state中去		
 					this.$store.dispatch('saveUser',user)
 					//跳转去个人中心页面
 					this.$router.replace('./manger')
 				}else if(result.code===0){
 					const user = result.data
 					console.log(user)
-					//将user保存到vuex的state中取		
+					//将user保存到vuex的state中去	
 					this.$store.dispatch('saveUser',user)
 					//跳转去个人中心页面
 					this.$router.replace('./profile')
@@ -313,6 +357,17 @@
 	              position absolute
 	              top 50%
 	              right 10px
+	              transform translateY(-50%)
+	              border 0
+	              color #ccc
+	              font-size 14px
+	              background transparent 
+	              &.right_phone
+	                color black
+	            .get_verification_voice
+	              position absolute
+	              top 50%
+	              right 50px
 	              transform translateY(-50%)
 	              border 0
 	              color #ccc

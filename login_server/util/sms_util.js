@@ -42,8 +42,8 @@ function sendCode(phone, code, callback) {
         to : phone,
         appId : AppID,
         templateId : '1',
-        "datas":[code,"1"]
-    }
+        "datas":[code,"1"],
+		}
     //body = JSON.stringify(body);
 
     //3. 准备请求头
@@ -64,17 +64,18 @@ function sendCode(phone, code, callback) {
     //4. 发送请求, 并得到返回的结果, 调用callback
 	  // callback(true);
     request({
-        method : 'POST',
+		method : 'POST',
         url : url,
         headers : headers,
         body : body,
-        json : true
-    }, function (error, response, body) {
-        console.log(error, response, body);
-        callback(body.statusCode==='000000');
+        json : true,
+		}, function (error, response, body) {
+			console.log(error, response, body);
+			callback(body.statusCode==='000000');
         // callback(true);
     });
 }
+
 exports.sendCode = sendCode;
 
 /*
