@@ -134,7 +134,6 @@
 				const {searchName} = this
 				this.head = true
 				result = await reqUser({searchName})
-				console.log('===',result.code)
 				if(result.code === 0){
 					this.$store.dispatch('saveUsers', result.data)
 				}else{
